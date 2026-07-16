@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, Link } from "react-router-dom";
-import { Plus, X, Send, Upload, FileVideo, Loader, Sparkles } from "lucide-react";
+import { Plus, X, Send, Upload, FileVideo, Loader, Sparkles, AlertTriangle } from "lucide-react";
 
 import { API } from "../config";
 
@@ -20,6 +20,8 @@ export default function NewListing() {
   const [error, setError] = useState("");
   const [uploading, setUploading] = useState(false);
   const [showPlanModal, setShowPlanModal] = useState(false);
+  const [showExtraModal, setShowExtraModal] = useState(false);
+  const [extraPaying, setExtraPaying] = useState(false);
 
   useEffect(() => {
     if (!token) return navigate("/login");
@@ -69,14 +71,34 @@ export default function NewListing() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) throw data;
       navigate("/dashboard");
     } catch (err) {
-      if (err.message === "Assinatura necessária para anunciar") {
+      if (err.error === "Assinatura necessária para anunciar") {
         setShowPlanModal(true);
+      } else if (err.extraPaymentRequired) {
+        setShowExtraModal(true);
       } else {
-        setError(err.message);
+        setError(err.error || "Erro ao criar anúncio");
       }
+    }
+  }
+
+  async function handleExtraPayment() {
+    setExtraPaying(true);
+    try {
+      const res = await fetch(`${API}/listings/extra-payment`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+      else setError("Erro ao gerar pagamento");
+    } catch {
+      setError("Erro de conexão");
+    } finally {
+      setExtraPaying(false);
+      setShowExtraModal(false);
     }
   }
 
@@ -217,6 +239,23 @@ export default function NewListing() {
               <p className="text-gray-500 mt-2">Você precisa de uma assinatura para criar anúncios. Escolha o plano ideal para você!</p>
               <Link to="/planos" onClick={() => setShowPlanModal(false)} className="block w-full mt-6 bg-emerald-600 text-white py-3 rounded-lg font-semibold hover:bg-emerald-700 transition">Ver planos</Link>
               <button type="button" onClick={() => setShowPlanModal(false)} className="mt-3 text-sm text-gray-500 hover:text-gray-700">Agora não</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showExtraModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowExtraModal(false)}>
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl relative" onClick={e => e.stopPropagation()}>
+            <button type="button" onClick={() => setShowExtraModal(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><X size={20} /></button>
+            <div className="text-center">
+              <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4"><AlertTriangle size={32} className="text-amber-600" /></div>
+              <h2 className="text-xl font-bold text-gray-800">Limite atingido</h2>
+              <p className="text-gray-500 mt-2">Você já usou todos os anúncios do seu plano. Publique um anúncio extra por apenas <strong>R$ 15</strong>.</p>
+              <button onClick={handleExtraPayment} disabled={extraPaying} className="block w-full mt-6 bg-emerald-600 text-white py-3 rounded-lg font-semibold hover:bg-emerald-700 transition disabled:opacity-50">
+                {extraPaying ? "Redirecionando..." : "Pagar R$ 15 e publicar"}
+              </button>
+              <button type="button" onClick={() => setShowExtraModal(false)} className="mt-3 text-sm text-gray-500 hover:text-gray-700">Cancelar</button>
             </div>
           </div>
         </div>

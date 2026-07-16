@@ -20,13 +20,23 @@ router.post("/mercadopago", async (req, res) => {
       const info = await payment.get({ id });
       const external = info?.external_reference;
       if (external && info?.status === "approved") {
-        const [userId, planId] = external.split(":");
-        if (userId && planId) {
-          await prisma.subscription.upsert({
-            where: { userId },
-            update: { status: "active", planId },
-            create: { userId, planId, status: "active", mpSubscriptionId: id },
-          });
+        if (external.endsWith(":extra_listing")) {
+          const [userId] = external.split(":");
+          if (userId) {
+            await prisma.subscription.updateMany({
+              where: { userId },
+              data: { extraListings: { increment: 1 } },
+            });
+          }
+        } else {
+          const [userId, planId] = external.split(":");
+          if (userId && planId) {
+            await prisma.subscription.upsert({
+              where: { userId },
+              update: { status: "active", planId },
+              create: { userId, planId, status: "active", mpSubscriptionId: id },
+            });
+          }
         }
       }
     }

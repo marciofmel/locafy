@@ -11,11 +11,23 @@ router.get("/", async (req, res) => {
     let plans = await prisma.plan.findMany({ where: { active: true } });
     if (plans.length === 0) {
       const data = [
-        { name: "Básico", price: 29.90, interval: "months", features: ["1 anúncio ativo", "Fotos ilimitadas", "WhatsApp direto"] },
-        { name: "Profissional", price: 49.90, interval: "months", features: ["5 anúncios ativos", "Fotos ilimitadas", "WhatsApp direto", "Destaque por 7 dias"] },
-        { name: "Premium", price: 99.90, interval: "months", features: ["Anúncios ilimitados", "Fotos ilimitadas", "WhatsApp direto", "Destaque permanente", "Suporte prioritário"] },
+        { name: "Básico", price: 29.99, interval: "months", maxListings: 2, features: ["2 anúncios inclusos", "Fotos ilimitadas", "WhatsApp direto", "R$15 por anúncio extra"] },
+        { name: "Profissional", price: 49.99, interval: "months", maxListings: 6, features: ["6 anúncios inclusos", "Fotos ilimitadas", "WhatsApp direto", "Destaque por 7 dias", "R$15 por anúncio extra"] },
+        { name: "Premium", price: 89.99, interval: "months", maxListings: 12, features: ["12 anúncios inclusos", "Fotos ilimitadas", "WhatsApp direto", "Destaque permanente", "Suporte prioritário", "R$15 por anúncio extra"] },
       ];
       for (const p of data) plans.push(await prisma.plan.create({ data: p }));
+    } else {
+      for (const plan of plans) {
+        if (!plan.maxListings) {
+          const limits = { "Básico": 2, "Profissional": 6, "Premium": 12 };
+          const prices = { "Básico": 29.99, "Profissional": 49.99, "Premium": 89.99 };
+          await prisma.plan.update({
+            where: { id: plan.id },
+            data: { maxListings: limits[plan.name] || 2, price: prices[plan.name] || plan.price },
+          });
+        }
+      }
+      plans = await prisma.plan.findMany({ where: { active: true } });
     }
     res.json(plans);
   } catch (err) {

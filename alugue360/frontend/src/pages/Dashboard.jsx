@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, Link } from "react-router-dom";
-import { Plus, Edit, Trash2, LogIn, Loader } from "lucide-react";
+import { Plus, Edit, Trash2, LogIn, Loader, BarChart3 } from "lucide-react";
 
 import { API } from "../config";
 
@@ -10,10 +10,11 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [subInfo, setSubInfo] = useState(null);
 
   useEffect(() => {
     if (!token) return navigate("/login");
-    fetchListings();
+    Promise.all([fetchListings(), fetchUserInfo()]);
   }, [token]);
 
   async function fetchListings() {
@@ -27,6 +28,18 @@ export default function Dashboard() {
     }
   }
 
+  async function fetchUserInfo() {
+    try {
+      const res = await fetch(`${API}/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSubInfo(data.subscription);
+      }
+    } catch {}
+  }
+
   async function deleteListing(id) {
     if (!confirm("Tem certeza?")) return;
     await fetch(`${API}/listings/${id}`, {
@@ -34,7 +47,12 @@ export default function Dashboard() {
       headers: { Authorization: `Bearer ${token}` },
     });
     fetchListings();
+    fetchUserInfo();
   }
+
+  const planLimit = subInfo ? subInfo.plan.maxListings + subInfo.extraListings : 0;
+  const listingsCount = listings.filter(l => l.active).length;
+  const usagePercent = planLimit > 0 ? Math.round((listingsCount / planLimit) * 100) : 0;
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
@@ -48,7 +66,22 @@ export default function Dashboard() {
         </Link>
       </div>
 
-      {!user?.subscription && (
+      {subInfo && (
+        <div className="bg-white p-4 rounded-xl shadow mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <BarChart3 size={18} className="text-emerald-600" />
+              <span className="font-semibold text-gray-800">{subInfo.plan.name}</span>
+            </div>
+            <span className="text-sm text-gray-500">{listingsCount}/{planLimit} anúncios</span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div className="bg-emerald-600 h-2 rounded-full transition-all" style={{ width: `${Math.min(usagePercent, 100)}%` }} />
+          </div>
+        </div>
+      )}
+
+      {!subInfo && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
           <p className="text-yellow-800">Você precisa de uma assinatura para anunciar.</p>
           <Link to="/planos" className="text-emerald-600 font-semibold hover:underline">Ver planos →</Link>

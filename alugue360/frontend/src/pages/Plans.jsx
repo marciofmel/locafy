@@ -6,9 +6,9 @@ import { Check, Sparkles } from "lucide-react";
 import { API } from "../config";
 
 const plans = [
-  { name: "Básico", price: "29,90", features: ["1 anúncio ativo", "Fotos ilimitadas", "WhatsApp direto"], color: "bg-gray-100", btn: "bg-gray-600" },
-  { name: "Profissional", price: "49,90", features: ["5 anúncios ativos", "Fotos ilimitadas", "WhatsApp direto", "Destaque por 7 dias"], color: "bg-emerald-50 border-emerald-300", btn: "bg-emerald-600", popular: true },
-  { name: "Premium", price: "99,90", features: ["Anúncios ilimitados", "Fotos ilimitadas", "WhatsApp direto", "Destaque permanente", "Suporte prioritário"], color: "bg-purple-50 border-purple-300", btn: "bg-purple-600" },
+  { name: "Básico", price: "29,99", listings: 2, features: ["2 anúncios inclusos", "Fotos ilimitadas", "WhatsApp direto", "R$15 por anúncio extra"], color: "bg-gray-100", btn: "bg-gray-600" },
+  { name: "Profissional", price: "49,99", listings: 6, features: ["6 anúncios inclusos", "Fotos ilimitadas", "WhatsApp direto", "Destaque por 7 dias", "R$15 por anúncio extra"], color: "bg-emerald-50 border-emerald-300", btn: "bg-emerald-600", popular: true },
+  { name: "Premium", price: "89,99", listings: 12, features: ["12 anúncios inclusos", "Fotos ilimitadas", "WhatsApp direto", "Destaque permanente", "Suporte prioritário", "R$15 por anúncio extra"], color: "bg-purple-50 border-purple-300", btn: "bg-purple-600" },
 ];
 
 export default function Plans() {
@@ -63,6 +63,7 @@ export default function Plans() {
               <span className="text-4xl font-bold text-gray-800">R$ {plan.price}</span>
               <span className="text-gray-500">/mês</span>
             </div>
+            <p className="text-sm text-gray-500 mt-1">até {plan.listings} anúncios</p>
             <ul className="mt-6 space-y-3">
               {plan.features.map((f, j) => (
                 <li key={j} className="flex items-center gap-2 text-gray-600"><Check size={18} className="text-emerald-600 flex-shrink-0" />{f}</li>

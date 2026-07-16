@@ -57,16 +57,88 @@ router.post("/", authMiddleware, async (req, res) => {
   try {
     const sub = await prisma.subscription.findFirst({
       where: { userId: req.userId, status: "active" },
+      include: { plan: true },
     });
     if (!sub) return res.status(403).json({ error: "Assinatura necessária para anunciar" });
+
+    const activeCount = await prisma.listing.count({
+      where: { userId: req.userId, active: true },
+    });
+
+    if (activeCount >= sub.plan.maxListings + sub.extraListings) {
+      return res.status(402).json({
+        error: "Limite de anúncios atingido",
+        extraPaymentRequired: true,
+        extraPrice: 15,
+        activeCount,
+        limit: sub.plan.maxListings + sub.extraListings,
+      });
+    }
 
     const { title, description, price, priceType, images, videos, whatsapp, street, number, neighborhood, city, state, categoryId, features } = req.body;
     const listing = await prisma.listing.create({
       data: { title, description, price, priceType: priceType || "daily", images, videos: videos || [], whatsapp, street, number, neighborhood, city, state, categoryId, features: features || [], userId: req.userId },
     });
+
+    await prisma.subscription.update({
+      where: { id: sub.id },
+      data: { listingsUsed: { increment: 1 } },
+    });
+
     res.json(listing);
   } catch {
     res.status(500).json({ error: "Erro ao criar anúncio" });
+  }
+});
+
+router.post("/extra-payment", authMiddleware, async (req, res) => {
+  try {
+    const sub = await prisma.subscription.findFirst({
+      where: { userId: req.userId, status: "active" },
+      include: { plan: true },
+    });
+    if (!sub) return res.status(403).json({ error: "Assinatura necessária" });
+
+    const MP_ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN || "";
+    if (!MP_ACCESS_TOKEN) return res.status(400).json({ error: "Pagamento indisponível" });
+
+    const user = await prisma.user.findUnique({ where: { id: req.userId } });
+    const baseUrl = req.headers.origin || process.env.FRONTEND_URL || "http://localhost:5173";
+    const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3001";
+
+    const body = {
+      items: [{
+        title: "Anúncio extra",
+        quantity: 1,
+        currency_id: "BRL",
+        unit_price: 15,
+      }],
+      payer: { email: user.email },
+      back_urls: {
+        success: `${baseUrl}/dashboard`,
+        failure: `${baseUrl}/dashboard`,
+        pending: `${baseUrl}/dashboard`,
+      },
+      auto_return: "approved",
+      external_reference: `${user.id}:extra_listing`,
+      notification_url: `${BACKEND_URL}/webhook/mercadopago`,
+    };
+
+    const mpRes = await fetch("https://api.mercadopago.com/checkout/preferences", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${MP_ACCESS_TOKEN}` },
+      body: JSON.stringify(body),
+    });
+
+    if (!mpRes.ok) {
+      const errText = await mpRes.text();
+      return res.status(502).json({ error: `MP error ${mpRes.status}: ${errText}` });
+    }
+
+    const pref = await mpRes.json();
+    res.json({ url: pref.init_point || pref.sandbox_init_point, preferenceId: pref.id });
+  } catch {
+    res.status(500).json({ error: "Erro ao criar pagamento" });
   }
 });
 

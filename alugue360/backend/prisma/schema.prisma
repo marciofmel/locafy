@@ -64,14 +64,15 @@ model Listing {
 }
 
 model Plan {
-  id        String   @id @default(cuid())
-  name      String
-  price     Float
-  interval  String   @default("month")
-  features  String[]
-  mpPlanId String?
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  name        String
+  price       Float
+  interval    String   @default("month")
+  maxListings Int      @default(2)
+  features    String[]
+  mpPlanId    String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
 
   subscriptions Subscription[]
 }
@@ -82,6 +83,8 @@ model Subscription {
   mpSubscriptionId String?
   currentPeriodStart DateTime?
   currentPeriodEnd   DateTime?
+  listingsUsed  Int       @default(0)
+  extraListings Int       @default(0)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
