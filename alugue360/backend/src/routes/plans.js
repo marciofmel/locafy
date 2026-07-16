@@ -40,6 +40,7 @@ router.post("/subscribe/:planId", authMiddleware, async (req, res) => {
 
     const body = {
       reason: plan.name,
+      payer_email: user.email,
       back_url: `${baseUrl}/payment/success`,
       auto_return: "approved",
       external_reference: `${user.id}:${plan.id}`,
