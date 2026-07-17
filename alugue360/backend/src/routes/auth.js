@@ -13,11 +13,11 @@ router.post("/register", async (req, res) => {
 
     const hash = await bcrypt.hash(password, 10);
     const user = await prisma.user.create({
-      data: { name, email, phone, password: hash },
+      data: { name, email, phone: phone || "", password: hash },
     });
 
     const token = generateToken(user.id);
-    res.json({ token, user: { id: user.id, name, email, phone } });
+    res.json({ token, user: { id: user.id, name, email, phone: phone || "" } });
   } catch (err) {
     console.error("❌ Register error:", err);
     res.status(500).json({ error: "Erro ao cadastrar" });

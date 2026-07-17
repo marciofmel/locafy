@@ -14,7 +14,7 @@ services:
           name: locafy-db
           property: connectionString
       - key: MP_ACCESS_TOKEN
-        value: APP_USR-1355545914013679-071119-f8fc8fec114434fdf8dc17a78e82f278-333641258
+        value: TEST-1355545914013679-071119-e9c29063f46574a594b68a139df9315b-333641258
       - key: JWT_SECRET
         value: locafy-jwt-secret-prod-2026
       - key: FRONTEND_URL
