@@ -9,6 +9,7 @@ const preapproval = new PreApproval(client);
 
 const router = Router();
 
+router.get("/mercadopago", (req, res) => res.sendStatus(200));
 router.post("/mercadopago", async (req, res) => {
   try {
     const { type, data, action } = req.body;
