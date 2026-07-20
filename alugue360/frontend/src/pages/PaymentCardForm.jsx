@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { API } from "../config";
-import { Loader, CreditCard, CheckCircle } from "lucide-react";
+import { Loader, CreditCard } from "lucide-react";
 
 const MP_PUBLIC_KEY = "APP_USR-a1e6f75d-132d-4f50-9268-623e7c021169";
 
@@ -12,10 +12,10 @@ export default function PaymentCardForm() {
   const navigate = useNavigate();
   const [plan, setPlan] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState("");
   const [success, setSuccess] = useState(false);
   const initialized = useRef(false);
+  const navCalled = useRef(false);
 
   useEffect(() => {
     if (!token) return navigate("/login");
@@ -50,7 +50,6 @@ export default function PaymentCardForm() {
             const paymentMethodId = cardFormData.payment_method_id;
             if (!cardTokenId) {
               setErr("Erro ao gerar token do cartão");
-              setSubmitting(false);
               return reject();
             }
             const controller = new AbortController();
@@ -64,22 +63,22 @@ export default function PaymentCardForm() {
               clearTimeout(timeout);
               if (res.error) {
                 setErr(res.error);
-                setSubmitting(false);
                 reject();
               } else if (res.paymentApproved) {
                 setSuccess(true);
-                setTimeout(() => navigate("/dashboard"), 2000);
                 resolve();
+                if (!navCalled.current) {
+                  navCalled.current = true;
+                  window.location.href = "/dashboard";
+                }
               } else {
                 const detail = res.paymentError ? ` (${res.paymentError})` : "";
                 setErr(`Assinatura criada, mas a cobrança não foi aprovada${detail}. Verifique seu cartão.`);
-                setSubmitting(false);
                 reject();
               }
             }).catch(() => {
               clearTimeout(timeout);
               setErr("Erro de conexão. Verifique se o cartão foi aprovado.");
-              setSubmitting(false);
               reject();
             });
           });
@@ -98,7 +97,7 @@ export default function PaymentCardForm() {
   if (loading) return <div className="min-h-[70vh] flex items-center justify-center"><Loader className="animate-spin text-emerald-600" size={32} /></div>;
   if (success) return (
     <div className="min-h-[70vh] flex items-center justify-center">
-      <div className="text-center"><CheckCircle size={64} className="text-emerald-600 mx-auto mb-4" /><h2 className="text-2xl font-bold">Pagamento confirmado!</h2><p className="text-gray-500 mt-2">Redirecionando...</p></div>
+      <div className="text-center"><Loader className="animate-spin text-emerald-600 mx-auto mb-4" size={48} /><h2 className="text-2xl font-bold text-gray-800">Pagamento confirmado!</h2><p className="text-gray-500 mt-2">Redirecionando para o dashboard...</p></div>
     </div>
   );
 
