@@ -123,83 +123,48 @@ router.post("/subscribe-with-card", authMiddleware, async (req, res) => {
     const baseUrl = req.headers.origin || process.env.FRONTEND_URL || "http://localhost:5173";
     const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3001";
 
-    const body = {
-      reason: plan.name,
-      external_reference: `${user.id}:${plan.id}`,
-      payer_email: user.email,
-      card_token_id: cardTokenId,
-      status: "authorized",
-      back_url: `${baseUrl}/payment/success`,
-      notification_url: `${BACKEND_URL}/webhook/mercadopago`,
-      auto_recurring: {
-        frequency: 1,
-        frequency_type: plan.interval || "months",
-        transaction_amount: plan.price,
-        currency_id: "BRL",
-      },
-    };
+    let customerRes = await fetch("https://api.mercadopago.com/v1/customers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${MP_ACCESS_TOKEN}` },
+      body: JSON.stringify({ email: user.email }),
+    });
+    const customerData = await customerRes.json();
+    const customerId = customerData.id;
+    console.log("MP customer:", customerId, customerData.email);
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-
-    let mpRes;
-    try {
-      mpRes = await fetch("https://api.mercadopago.com/preapproval", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${MP_ACCESS_TOKEN}`,
-        },
-        body: JSON.stringify(body),
-        signal: controller.signal,
-      });
-    } catch (fetchErr) {
-      clearTimeout(timeoutId);
-      console.error("MP fetch error:", fetchErr?.message || fetchErr);
-      return res.status(502).json({ error: "Tempo limite excedido ao processar pagamento. Tente novamente." });
-    }
-
-    clearTimeout(timeoutId);
-
-    if (!mpRes.ok) {
-      const errText = await mpRes.text();
-      console.error("MP API error:", mpRes.status, errText);
-      return res.status(502).json({ error: `MP error ${mpRes.status}: ${errText}` });
-    }
-
-    const mpSub = await mpRes.json();
-    const cardId = mpSub.card_id;
-
-    if (!cardId) {
-      console.error("MP não retornou card_id na preapproval");
-      return res.status(502).json({ error: "Cartão não foi salvo para cobrança recorrente" });
-    }
-
-    const paymentBody = {
-      transaction_amount: plan.price,
-      description: `${plan.name} - 1º mês`,
-      installments: 1,
-      payment_method_id: mpSub.payment_method_id || "master",
-      card: { id: cardId },
-      payer: { email: user.email },
-      external_reference: `${user.id}:${plan.id}`,
-    };
+    let cardRes = await fetch(`https://api.mercadopago.com/v1/customers/${customerId}/cards`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${MP_ACCESS_TOKEN}` },
+      body: JSON.stringify({ token: cardTokenId }),
+    });
+    const cardData = await cardRes.json();
+    const savedCardId = cardData.id;
+    const paymentMethodId = cardData.payment_method?.id || "master";
+    console.log("MP saved card:", savedCardId, cardData.last_four_digits, paymentMethodId);
 
     let paymentApproved = false;
-    let paymentRes;
+    let subscriptionId = null;
     try {
-      paymentRes = await fetch("https://api.mercadopago.com/v1/payments", {
+      const paymentBody = {
+        transaction_amount: plan.price,
+        description: `${plan.name} - 1º mês`,
+        installments: 1,
+        payment_method_id: paymentMethodId,
+        payer: { email: user.email },
+        customer_id: customerId,
+        card_id: savedCardId,
+        external_reference: `${user.id}:${plan.id}`,
+      };
+
+      let paymentRes = await fetch("https://api.mercadopago.com/v1/payments", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${MP_ACCESS_TOKEN}`,
-        },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${MP_ACCESS_TOKEN}` },
         body: JSON.stringify(paymentBody),
       });
       if (paymentRes.ok) {
         const payData = await paymentRes.json();
         paymentApproved = payData.status === "approved";
-        console.log("MP payment result:", payData.status, payData.status_detail);
+        console.log("MP payment:", payData.status, payData.status_detail, payData.id);
       } else {
         const payErrText = await paymentRes.text();
         console.error("MP payment error:", paymentRes.status, payErrText);
@@ -208,13 +173,46 @@ router.post("/subscribe-with-card", authMiddleware, async (req, res) => {
       console.error("MP payment fetch error:", payErr?.message || payErr);
     }
 
+    if (paymentApproved) {
+      try {
+        let preRes = await fetch("https://api.mercadopago.com/preapproval", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${MP_ACCESS_TOKEN}` },
+          body: JSON.stringify({
+            reason: plan.name,
+            external_reference: `${user.id}:${plan.id}`,
+            payer_email: user.email,
+            status: "authorized",
+            back_url: `${baseUrl}/payment/success`,
+            notification_url: `${BACKEND_URL}/webhook/mercadopago`,
+            auto_recurring: {
+              frequency: 1,
+              frequency_type: plan.interval || "months",
+              transaction_amount: plan.price,
+              currency_id: "BRL",
+            },
+          }),
+        });
+        if (preRes.ok) {
+          const preData = await preRes.json();
+          subscriptionId = preData.id;
+          console.log("MP preapproval:", preData.id, preData.status);
+        } else {
+          const preErrText = await preRes.text();
+          console.error("MP preapproval error:", preRes.status, preErrText);
+        }
+      } catch (preErr) {
+        console.error("MP preapproval fetch error:", preErr?.message || preErr);
+      }
+    }
+
     await prisma.subscription.upsert({
       where: { userId: user.id },
-      update: { status: "active", planId: plan.id, mpSubscriptionId: mpSub.id },
-      create: { userId: user.id, planId: plan.id, status: "active", mpSubscriptionId: mpSub.id },
+      update: { status: "active", planId: plan.id, mpSubscriptionId: subscriptionId },
+      create: { userId: user.id, planId: plan.id, status: "active", mpSubscriptionId: subscriptionId },
     });
 
-    return res.json({ success: true, subscriptionId: mpSub.id, paymentApproved });
+    return res.json({ success: true, paymentApproved, subscriptionId });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Erro ao criar assinatura" });
