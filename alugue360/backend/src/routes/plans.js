@@ -123,6 +123,10 @@ router.post("/subscribe-with-card", authMiddleware, async (req, res) => {
     const baseUrl = req.headers.origin || process.env.FRONTEND_URL || "http://localhost:5173";
     const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3001";
 
+    let paymentApproved = false;
+    let subscriptionId = null;
+    let savedCardId = null;
+
     let customerRes = await fetch("https://api.mercadopago.com/v1/customers", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${MP_ACCESS_TOKEN}` },
@@ -130,47 +134,78 @@ router.post("/subscribe-with-card", authMiddleware, async (req, res) => {
     });
     const customerData = await customerRes.json();
     const customerId = customerData.id;
-    console.log("MP customer:", customerId, customerData.email);
+    console.log("MP customer:", customerId, customerData.email, "status:", customerRes.status);
 
-    let cardRes = await fetch(`https://api.mercadopago.com/v1/customers/${customerId}/cards`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${MP_ACCESS_TOKEN}` },
-      body: JSON.stringify({ token: cardTokenId }),
-    });
-    const cardData = await cardRes.json();
-    const savedCardId = cardData.id;
-    const paymentMethodId = cardData.payment_method?.id || "master";
-    console.log("MP saved card:", savedCardId, cardData.last_four_digits, paymentMethodId);
-
-    let paymentApproved = false;
-    let subscriptionId = null;
-    try {
-      const paymentBody = {
-        transaction_amount: plan.price,
-        description: `${plan.name} - 1º mês`,
-        installments: 1,
-        payment_method_id: paymentMethodId,
-        payer: { email: user.email },
-        customer_id: customerId,
-        card_id: savedCardId,
-        external_reference: `${user.id}:${plan.id}`,
-      };
-
-      let paymentRes = await fetch("https://api.mercadopago.com/v1/payments", {
+    if (customerId) {
+      let cardRes = await fetch(`https://api.mercadopago.com/v1/customers/${customerId}/cards`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${MP_ACCESS_TOKEN}` },
-        body: JSON.stringify(paymentBody),
+        body: JSON.stringify({ token: cardTokenId }),
       });
-      if (paymentRes.ok) {
-        const payData = await paymentRes.json();
-        paymentApproved = payData.status === "approved";
-        console.log("MP payment:", payData.status, payData.status_detail, payData.id);
+      const cardData = await cardRes.json();
+      savedCardId = cardData.id;
+      const paymentMethodId = cardData.payment_method?.id || "master";
+      console.log("MP card:", savedCardId, cardData.last_four_digits, paymentMethodId, "status:", cardRes.status);
+
+      if (savedCardId) {
+        try {
+          let paymentRes = await fetch("https://api.mercadopago.com/v1/payments", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${MP_ACCESS_TOKEN}` },
+            body: JSON.stringify({
+              transaction_amount: plan.price,
+              description: `${plan.name} - 1º mês`,
+              installments: 1,
+              payment_method_id: paymentMethodId,
+              payer: { email: user.email },
+              card_id: savedCardId,
+              customer_id: customerId,
+              external_reference: `${user.id}:${plan.id}`,
+            }),
+          });
+          const payData = await paymentRes.json();
+          if (paymentRes.ok) {
+            paymentApproved = payData.status === "approved";
+            console.log("MP payment:", payData.status, payData.status_detail, payData.id);
+          } else {
+            console.error("MP payment error:", paymentRes.status, JSON.stringify(payData));
+          }
+        } catch (payErr) {
+          console.error("MP payment fetch error:", payErr?.message || payErr);
+        }
       } else {
-        const payErrText = await paymentRes.text();
-        console.error("MP payment error:", paymentRes.status, payErrText);
+        console.error("MP card save failed:", JSON.stringify(cardData));
       }
-    } catch (payErr) {
-      console.error("MP payment fetch error:", payErr?.message || payErr);
+    } else {
+      console.error("MP customer creation failed:", JSON.stringify(customerData));
+    }
+
+    if (!paymentApproved && savedCardId) {
+      try {
+        let paymentRes = await fetch("https://api.mercadopago.com/v1/payments", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${MP_ACCESS_TOKEN}` },
+          body: JSON.stringify({
+            transaction_amount: plan.price,
+            description: `${plan.name} - 1º mês`,
+            installments: 1,
+            payment_method_id: "master",
+            payer: { email: user.email },
+            token: cardTokenId,
+            customer_id: customerId,
+            external_reference: `${user.id}:${plan.id}`,
+          }),
+        });
+        const payData = await paymentRes.json();
+        if (paymentRes.ok) {
+          paymentApproved = payData.status === "approved";
+          console.log("MP payment (retry token):", payData.status, payData.status_detail, payData.id);
+        } else {
+          console.error("MP payment retry error:", paymentRes.status, JSON.stringify(payData));
+        }
+      } catch (payErr) {
+        console.error("MP payment retry fetch error:", payErr?.message || payErr);
+      }
     }
 
     if (paymentApproved) {
@@ -193,13 +228,12 @@ router.post("/subscribe-with-card", authMiddleware, async (req, res) => {
             },
           }),
         });
+        const preData = await preRes.json();
         if (preRes.ok) {
-          const preData = await preRes.json();
           subscriptionId = preData.id;
           console.log("MP preapproval:", preData.id, preData.status);
         } else {
-          const preErrText = await preRes.text();
-          console.error("MP preapproval error:", preRes.status, preErrText);
+          console.error("MP preapproval error:", preRes.status, JSON.stringify(preData));
         }
       } catch (preErr) {
         console.error("MP preapproval fetch error:", preErr?.message || preErr);
@@ -212,7 +246,7 @@ router.post("/subscribe-with-card", authMiddleware, async (req, res) => {
       create: { userId: user.id, planId: plan.id, status: "active", mpSubscriptionId: subscriptionId },
     });
 
-    return res.json({ success: true, paymentApproved, subscriptionId });
+    return res.json({ success: true, paymentApproved, subscriptionId, savedCardId });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Erro ao criar assinatura" });
