@@ -127,6 +127,7 @@ router.post("/subscribe-with-card", authMiddleware, async (req, res) => {
     let subscriptionId = null;
     let paymentId = null;
     let subscriptionUrl = null;
+    let paymentError = null;
 
     // 1) Cria payment com o token (cobra agora)
     try {
@@ -147,9 +148,11 @@ router.post("/subscribe-with-card", authMiddleware, async (req, res) => {
       if (paymentRes.ok) {
         paymentApproved = payData.status === "approved" || payData.status === "in_process";
         paymentId = payData.id;
+        paymentError = payData.status_detail;
         console.log("MP payment:", payData.status, payData.status_detail, payData.id);
       } else {
-        console.error("MP payment error:", paymentRes.status, JSON.stringify(payData));
+        paymentError = JSON.stringify(payData);
+        console.error("MP payment error:", paymentRes.status, paymentError);
       }
     } catch (payErr) {
       console.error("MP payment fetch error:", payErr?.message || payErr);
@@ -202,7 +205,7 @@ router.post("/subscribe-with-card", authMiddleware, async (req, res) => {
       create: { userId: user.id, planId: plan.id, status: "active", mpSubscriptionId: subscriptionId },
     });
 
-    return res.json({ success: true, paymentApproved, paymentId, subscriptionId, subscriptionUrl });
+    return res.json({ success: true, paymentApproved, paymentId, subscriptionId, subscriptionUrl, paymentError });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Erro ao criar assinatura" });

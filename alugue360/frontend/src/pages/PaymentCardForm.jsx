@@ -71,7 +71,8 @@ export default function PaymentCardForm() {
                 setTimeout(() => navigate("/dashboard"), 2000);
                 resolve();
               } else {
-                setErr("Assinatura criada, mas a cobrança do primeiro mês não foi aprovada. Verifique seu cartão.");
+                const detail = res.paymentError ? ` (${res.paymentError})` : "";
+                setErr(`Assinatura criada, mas a cobrança não foi aprovada${detail}. Verifique seu cartão.`);
                 setSubmitting(false);
                 reject();
               }
