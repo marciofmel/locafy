@@ -145,7 +145,7 @@ router.post("/subscribe-with-card", authMiddleware, async (req, res) => {
       });
       const payData = await paymentRes.json();
       if (paymentRes.ok) {
-        paymentApproved = payData.status === "approved";
+        paymentApproved = payData.status === "approved" || payData.status === "in_process";
         paymentId = payData.id;
         console.log("MP payment:", payData.status, payData.status_detail, payData.id);
       } else {

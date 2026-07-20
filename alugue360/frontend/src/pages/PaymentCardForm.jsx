@@ -68,7 +68,7 @@ export default function PaymentCardForm() {
                 reject();
               } else if (res.paymentApproved) {
                 setSuccess(true);
-                setTimeout(() => navigate("/payment/success"), 2000);
+                setTimeout(() => navigate("/dashboard"), 2000);
                 resolve();
               } else {
                 setErr("Assinatura criada, mas a cobrança do primeiro mês não foi aprovada. Verifique seu cartão.");
