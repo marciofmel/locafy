@@ -169,13 +169,47 @@ router.post("/subscribe-with-card", authMiddleware, async (req, res) => {
 
     const mpSub = await mpRes.json();
 
+    const paymentBody = {
+      transaction_amount: plan.price,
+      token: cardTokenId,
+      description: `${plan.name} - 1º mês`,
+      installments: 1,
+      payer: { email: user.email },
+      external_reference: `${user.id}:${plan.id}`,
+      metadata: { subscription_id: mpSub.id },
+    };
+
+    let paymentRes;
+    try {
+      paymentRes = await fetch("https://api.mercadopago.com/v1/payments", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${MP_ACCESS_TOKEN}`,
+        },
+        body: JSON.stringify(paymentBody),
+      });
+    } catch (payErr) {
+      console.error("MP payment error:", payErr?.message || payErr);
+    }
+
+    let paymentApproved = false;
+    if (paymentRes && paymentRes.ok) {
+      const payData = await paymentRes.json();
+      paymentApproved = payData.status === "approved";
+      console.log("MP payment result:", payData.status, payData.status_detail);
+    } else if (paymentRes) {
+      const payErrText = await paymentRes.text();
+      console.error("MP payment API error:", paymentRes.status, payErrText);
+    }
+
     await prisma.subscription.upsert({
       where: { userId: user.id },
       update: { status: "active", planId: plan.id, mpSubscriptionId: mpSub.id },
       create: { userId: user.id, planId: plan.id, status: "active", mpSubscriptionId: mpSub.id },
     });
 
-    return res.json({ success: true, subscriptionId: mpSub.id });
+    return res.json({ success: true, subscriptionId: mpSub.id, paymentApproved });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Erro ao criar assinatura" });

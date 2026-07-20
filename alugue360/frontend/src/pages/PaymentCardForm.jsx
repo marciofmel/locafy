@@ -67,7 +67,11 @@ export default function PaymentCardForm() {
                 reject();
               } else {
                 setSuccess(true);
-                setTimeout(() => navigate("/payment/success"), 2000);
+                if (res.paymentApproved === false) {
+                  setTimeout(() => navigate("/payment/success"), 2000);
+                } else {
+                  setTimeout(() => navigate("/payment/success"), 2000);
+                }
                 resolve();
               }
             }).catch(() => {
