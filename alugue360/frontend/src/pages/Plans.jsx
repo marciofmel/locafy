@@ -26,22 +26,7 @@ export default function Plans() {
   async function subscribe(planId) {
     if (!user) return navigate("/login");
     if (!planId) return setErr("Plano indisponível");
-    setLoading(planId);
-    setErr("");
-    const token = localStorage.getItem("token");
-    try {
-      const res = await fetch(`${API}/plans/subscribe/${planId}`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      if (data.url) window.location.href = data.url;
-      else setErr(data.error || "Erro desconhecido");
-    } catch {
-      setErr("Erro de conexão");
-    } finally {
-      setLoading(null);
-    }
+    navigate(`/payment/card/${planId}`);
   }
 
   return (

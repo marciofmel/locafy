@@ -107,4 +107,79 @@ router.post("/subscribe/:planId", authMiddleware, async (req, res) => {
   }
 });
 
+router.post("/subscribe-with-card", authMiddleware, async (req, res) => {
+  try {
+    const { planId, cardTokenId } = req.body;
+    if (!planId || !cardTokenId) return res.status(400).json({ error: "planId e cardTokenId são obrigatórios" });
+
+    const plan = await prisma.plan.findUnique({ where: { id: planId } });
+    if (!plan) return res.status(404).json({ error: "Plano não encontrado" });
+
+    const user = await prisma.user.findUnique({ where: { id: req.userId } });
+    if (!user) return res.status(404).json({ error: "Usuário não encontrado" });
+
+    if (!MP_ACCESS_TOKEN) return res.status(400).json({ error: "Mercado Pago não configurado" });
+
+    const baseUrl = req.headers.origin || process.env.FRONTEND_URL || "http://localhost:5173";
+    const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3001";
+
+    const body = {
+      reason: plan.name,
+      external_reference: `${user.id}:${plan.id}`,
+      payer_email: user.email,
+      card_token_id: cardTokenId,
+      status: "authorized",
+      back_url: `${baseUrl}/payment/success`,
+      notification_url: `${BACKEND_URL}/webhook/mercadopago`,
+      auto_recurring: {
+        frequency: 1,
+        frequency_type: plan.interval || "months",
+        transaction_amount: plan.price,
+        currency_id: "BRL",
+      },
+    };
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+    let mpRes;
+    try {
+      mpRes = await fetch("https://api.mercadopago.com/preapproval", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${MP_ACCESS_TOKEN}`,
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+    } catch (fetchErr) {
+      clearTimeout(timeoutId);
+      console.error("MP fetch error:", fetchErr?.message || fetchErr);
+      return res.status(502).json({ error: "Tempo limite excedido ao processar pagamento. Tente novamente." });
+    }
+
+    clearTimeout(timeoutId);
+
+    if (!mpRes.ok) {
+      const errText = await mpRes.text();
+      console.error("MP API error:", mpRes.status, errText);
+      return res.status(502).json({ error: `MP error ${mpRes.status}: ${errText}` });
+    }
+
+    const mpSub = await mpRes.json();
+
+    await prisma.subscription.upsert({
+      where: { userId: user.id },
+      update: { status: "active", planId: plan.id, mpSubscriptionId: mpSub.id },
+      create: { userId: user.id, planId: plan.id, status: "active", mpSubscriptionId: mpSub.id },
+    });
+
+    return res.json({ success: true, subscriptionId: mpSub.id });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erro ao criar assinatura" });
+  }
+});
+
 export default router;
