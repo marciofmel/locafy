@@ -146,7 +146,18 @@ router.put("/:id", authMiddleware, async (req, res) => {
   const listing = await prisma.listing.findUnique({ where: { id: req.params.id } });
   if (!listing || listing.userId !== req.userId) return res.status(403).json({ error: "Sem permissão" });
 
-  const updated = await prisma.listing.update({ where: { id: req.params.id }, data: req.body });
+  const { title, description, price, priceType, images, videos, whatsapp, street, number, neighborhood, city, state, categoryId, features } = req.body;
+  const updated = await prisma.listing.update({
+    where: { id: req.params.id },
+    data: {
+      title, description, price, priceType,
+      images: images ?? listing.images,
+      videos: videos ?? listing.videos,
+      whatsapp, street, number, neighborhood, city, state,
+      categoryId,
+      features: features ?? listing.features,
+    },
+  });
   res.json(updated);
 });
 

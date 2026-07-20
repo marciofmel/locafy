@@ -61,12 +61,12 @@ export default function ListingDetail() {
       <div className="grid md:grid-cols-2 gap-8">
         <div>
           <div className="h-80 bg-gray-100 rounded-xl flex items-center justify-center text-gray-400 text-6xl">
-            {item.images?.[0] ? <img src={imgUrl(item.images[0])} className="w-full h-full object-cover rounded-xl" /> : "📷"}
+            {item.images?.[0] ? <img src={imgUrl(item.images[0])} onError={e => { e.target.style.display = "none"; e.target.parentElement.textContent = "📷"; }} className="w-full h-full object-cover rounded-xl" /> : "📷"}
           </div>
           {item.images?.length > 1 && (
             <div className="flex gap-2 mt-2 overflow-x-auto">
               {item.images.map((img, i) => (
-                <img key={i} src={imgUrl(img)} className="w-20 h-20 object-cover rounded-lg cursor-pointer hover:opacity-80" />
+                <img key={i} src={imgUrl(img)} onError={e => { e.target.style.display = "none"; }} className="w-20 h-20 object-cover rounded-lg cursor-pointer hover:opacity-80" />
               ))}
             </div>
           )}

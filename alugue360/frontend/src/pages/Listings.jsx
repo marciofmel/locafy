@@ -51,7 +51,7 @@ export default function Listings() {
           {filtered.map(item => (
             <Link key={item.id} to={`/anuncio/${item.id}`} className="bg-white rounded-xl shadow overflow-hidden hover:shadow-lg transition">
               <div className="h-48 bg-gray-100 flex items-center justify-center text-gray-400 text-4xl">
-                {item.images?.[0] ? <img src={imgUrl(item.images[0])} className="w-full h-full object-cover" /> : "📷"}
+                {item.images?.[0] ? <img src={imgUrl(item.images[0])} onError={e => { e.target.style.display = "none"; e.target.parentElement.textContent = "📷"; }} className="w-full h-full object-cover" /> : "📷"}
               </div>
               <div className="p-4">
                 <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded">{item.category?.name}</span>

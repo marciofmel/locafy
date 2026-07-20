@@ -51,16 +51,11 @@ router.post("/", authMiddleware, upload.array("files", 10), async (req, res) => 
     }
     const urls = await Promise.all(req.files.map(async (f) => {
       if (process.env.CLOUDINARY_URL) {
-        try {
-          const result = await cloudinary.uploader.upload(f.path, {
-            folder: "locafy",
-            resource_type: "auto",
-          });
-          return result.secure_url;
-        } catch (cloudErr) {
-          console.error("☁️ Cloudinary upload failed, falling back to local:", cloudErr?.error?.message || cloudErr.message);
-          return `/uploads/${f.filename}`;
-        }
+        const result = await cloudinary.uploader.upload(f.path, {
+          folder: "locafy",
+          resource_type: "auto",
+        });
+        return result.secure_url;
       }
       return `/uploads/${f.filename}`;
     }));
