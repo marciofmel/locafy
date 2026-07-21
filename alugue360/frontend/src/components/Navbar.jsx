@@ -38,6 +38,14 @@ export default function Navbar() {
                 <Link to="/dashboard" className="flex items-center gap-1 hover:text-emerald-200 transition">
                   <LayoutDashboard size={18} /> Painel
                 </Link>
+                <div className="flex items-center gap-2">
+                  {user.avatar ? (
+                    <img src={user.avatar} className="w-8 h-8 rounded-full object-cover border-2 border-white" />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-emerald-400 flex items-center justify-center text-sm font-bold">{user.name?.[0]?.toUpperCase()}</div>
+                  )}
+                  <span className="text-sm font-medium">{user.name?.split(" ")[0]}</span>
+                </div>
                 <button onClick={logout} className="bg-red-500 px-3 py-1 rounded hover:bg-red-600 transition text-sm">Sair</button>
               </>
             ) : (
@@ -64,6 +72,14 @@ export default function Navbar() {
           <Link to="/planos" onClick={() => setOpen(false)} className="block py-2 hover:bg-emerald-600 rounded px-2">Planos</Link>
           {user ? (
             <>
+              <div className="flex items-center gap-2 py-2 px-2">
+                {user.avatar ? (
+                  <img src={user.avatar} className="w-8 h-8 rounded-full object-cover border-2 border-white" />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-emerald-400 flex items-center justify-center text-sm font-bold">{user.name?.[0]?.toUpperCase()}</div>
+                )}
+                <span className="font-medium">{user.name}</span>
+              </div>
               <Link to="/favoritos" onClick={() => setOpen(false)} className="block py-2 hover:bg-emerald-600 rounded px-2">Favoritos</Link>
               <Link to="/dashboard" onClick={() => setOpen(false)} className="block py-2 hover:bg-emerald-600 rounded px-2">Painel</Link>
               <button onClick={() => { logout(); setOpen(false); }} className="w-full text-left py-2 text-red-300">Sair</button>

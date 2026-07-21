@@ -51,6 +51,31 @@ router.get("/me", authMiddleware, async (req, res) => {
   res.json(safe);
 });
 
+router.put("/profile", authMiddleware, async (req, res) => {
+  try {
+    const { name, phone, city, state, street, number, neighborhood, cpf, rgDocument, selfie, cnh, avatar } = req.body;
+    const data = {};
+    if (name !== undefined) data.name = name;
+    if (phone !== undefined) data.phone = phone;
+    if (city !== undefined) data.city = city;
+    if (state !== undefined) data.state = state;
+    if (street !== undefined) data.street = street;
+    if (number !== undefined) data.number = number;
+    if (neighborhood !== undefined) data.neighborhood = neighborhood;
+    if (cpf !== undefined) data.cpf = cpf;
+    if (rgDocument !== undefined) data.rgDocument = rgDocument;
+    if (selfie !== undefined) data.selfie = selfie;
+    if (cnh !== undefined) data.cnh = cnh;
+    if (avatar !== undefined) data.avatar = avatar;
+    if (cpf !== undefined || rgDocument !== undefined || cnh !== undefined) data.docStatus = "pending";
+    const user = await prisma.user.update({ where: { id: req.userId }, data });
+    const { password, ...safe } = user;
+    res.json(safe);
+  } catch {
+    res.status(500).json({ error: "Erro ao atualizar perfil" });
+  }
+});
+
 router.post("/documents", authMiddleware, async (req, res) => {
   try {
     const { cpf, rgDocument, selfie, cnh } = req.body;
@@ -65,6 +90,42 @@ router.post("/documents", authMiddleware, async (req, res) => {
     res.json({ success: true });
   } catch {
     res.status(500).json({ error: "Erro ao salvar documentos" });
+  }
+});
+
+router.post("/complete-registration", async (req, res) => {
+  try {
+    const { name, email, password, phone, city, state, street, number, neighborhood, cpf, rgDocument, selfie, cnh, avatar, planId } = req.body;
+    if (!name || !email || !password) return res.status(400).json({ error: "Nome, email e senha são obrigatórios" });
+
+    const exists = await prisma.user.findUnique({ where: { email } });
+    if (exists) return res.status(400).json({ error: "Email já cadastrado" });
+
+    const hash = await bcrypt.hash(password, 10);
+    const user = await prisma.user.create({
+      data: {
+        name, email, phone: phone || "", password: hash,
+        city, state, street, number, neighborhood,
+        cpf, rgDocument, selfie, cnh, avatar,
+        docStatus: rgDocument || cnh ? "pending" : "none",
+      },
+    });
+
+    let subscription = null;
+    if (planId) {
+      const plan = await prisma.plan.findUnique({ where: { id: planId } });
+      if (plan) {
+        subscription = await prisma.subscription.create({
+          data: { userId: user.id, planId: plan.id, status: "active" },
+        });
+      }
+    }
+
+    const token = generateToken(user.id);
+    res.json({ token, user: { id: user.id, name, email, phone: phone || "", avatar } });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erro ao completar cadastro" });
   }
 });
 

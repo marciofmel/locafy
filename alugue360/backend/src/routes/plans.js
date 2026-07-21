@@ -212,4 +212,85 @@ router.post("/subscribe-with-card", authMiddleware, async (req, res) => {
   }
 });
 
+router.post("/guest-checkout", async (req, res) => {
+  try {
+    const { planId } = req.body;
+    if (!planId) return res.status(400).json({ error: "planId é obrigatório" });
+    if (!MP_ACCESS_TOKEN) return res.status(400).json({ error: "Pagamento indisponível" });
+
+    const plan = await prisma.plan.findUnique({ where: { id: planId } });
+    if (!plan) return res.status(404).json({ error: "Plano não encontrado" });
+
+    const baseUrl = req.headers.origin || process.env.FRONTEND_URL || "http://localhost:5173";
+    const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3001";
+
+    const body = {
+      items: [{
+        title: plan.name,
+        quantity: 1,
+        currency_id: "BRL",
+        unit_price: plan.price,
+      }],
+      back_urls: {
+        success: `${baseUrl}/register?plan=${planId}`,
+        failure: `${baseUrl}/planos`,
+        pending: `${baseUrl}/register?plan=${planId}`,
+      },
+      auto_return: "approved",
+      external_reference: `guest:${planId}`,
+      notification_url: `${BACKEND_URL}/webhook/mercadopago`,
+    };
+
+    const mpRes = await fetch("https://api.mercadopago.com/checkout/preferences", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${MP_ACCESS_TOKEN}` },
+      body: JSON.stringify(body),
+    });
+
+    if (!mpRes.ok) {
+      const errText = await mpRes.text();
+      return res.status(502).json({ error: `MP error ${mpRes.status}: ${errText}` });
+    }
+
+    const pref = await mpRes.json();
+    res.json({ url: pref.init_point || pref.sandbox_init_point });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erro ao criar checkout" });
+  }
+});
+
+router.post("/guest-card-payment", async (req, res) => {
+  try {
+    const { planId, cardTokenId, paymentMethodId } = req.body;
+    if (!planId || !cardTokenId) return res.status(400).json({ error: "planId e cardTokenId são obrigatórios" });
+    if (!MP_ACCESS_TOKEN) return res.status(400).json({ error: "Pagamento indisponível" });
+
+    const plan = await prisma.plan.findUnique({ where: { id: planId } });
+    if (!plan) return res.status(404).json({ error: "Plano não encontrado" });
+
+    const paymentRes = await fetch("https://api.mercadopago.com/v1/payments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${MP_ACCESS_TOKEN}` },
+      body: JSON.stringify({
+        transaction_amount: plan.price,
+        description: `${plan.name}`,
+        installments: 1,
+        payment_method_id: paymentMethodId || "master",
+        payer: { email: "guest@temp.com" },
+        token: cardTokenId,
+        external_reference: `guest:${planId}`,
+      }),
+    });
+    const payData = await paymentRes.json();
+    if (paymentRes.ok && (payData.status === "approved" || payData.status === "in_process")) {
+      return res.json({ success: true, paymentId: payData.id, status: payData.status });
+    }
+    res.status(502).json({ error: `MP error: ${payData.status_detail || payData.message || "Pagamento recusado"}` });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erro ao processar pagamento" });
+  }
+});
+
 export default router;
