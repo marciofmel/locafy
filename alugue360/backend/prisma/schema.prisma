@@ -20,6 +20,12 @@ model User {
   cnh           String?
   docStatus     String    @default("none")
   docVerifiedAt DateTime?
+  avatar      String?
+  city        String?
+  state       String?
+  street      String?
+  number      String?
+  neighborhood String?
   mpCustomerId String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt

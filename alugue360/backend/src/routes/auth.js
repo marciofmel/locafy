@@ -7,17 +7,22 @@ const router = Router();
 
 router.post("/register", async (req, res) => {
   try {
-    const { name, email, phone, password } = req.body;
+    const { name, email, phone, password, cpf, rgDocument, selfie, avatar, city, state, street, number, neighborhood } = req.body;
     const exists = await prisma.user.findUnique({ where: { email } });
     if (exists) return res.status(400).json({ error: "Email já cadastrado" });
 
     const hash = await bcrypt.hash(password, 10);
     const user = await prisma.user.create({
-      data: { name, email, phone: phone || "", password: hash },
+      data: {
+        name, email, phone: phone || "", password: hash,
+        cpf, rgDocument, selfie, avatar,
+        city, state, street, number, neighborhood,
+        docStatus: rgDocument || selfie ? "pending" : "none",
+      },
     });
 
     const token = generateToken(user.id);
-    res.json({ token, user: { id: user.id, name, email, phone: phone || "" } });
+    res.json({ token, user: { id: user.id, name, email, phone: phone || "", avatar } });
   } catch (err) {
     console.error("❌ Register error:", err);
     res.status(500).json({ error: "Erro ao cadastrar" });

@@ -15,6 +15,7 @@ import Documents from "./pages/Documents";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancel from "./pages/PaymentCancel";
 import PaymentCardForm from "./pages/PaymentCardForm";
+import Checkout from "./pages/Checkout";
 
 export default function App() {
   return (
@@ -36,6 +37,7 @@ export default function App() {
             <Route path="/payment/success" element={<PaymentSuccess />} />
             <Route path="/payment/card/:planId" element={<PaymentCardForm />} />
             <Route path="/payment/cancel" element={<PaymentCancel />} />
+            <Route path="/checkout/:planId" element={<Checkout />} />
           </Route>
         </Routes>
       </AuthProvider>
