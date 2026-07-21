@@ -66,27 +66,4 @@ router.post("/", authMiddleware, upload.array("files", 10), async (req, res) => 
   }
 });
 
-// Upload público (sem auth) para fluxo checkout → registro
-router.post("/public", upload.array("files", 10), async (req, res) => {
-  try {
-    if (!req.files || req.files.length === 0) {
-      return res.status(400).json({ error: "Nenhum arquivo enviado" });
-    }
-    const urls = await Promise.all(req.files.map(async (f) => {
-      if (process.env.CLOUDINARY_URL) {
-        const result = await cloudinary.uploader.upload(f.path, {
-          folder: "locafy",
-          resource_type: "auto",
-        });
-        return result.secure_url;
-      }
-      return `/uploads/${f.filename}`;
-    }));
-    res.json({ urls });
-  } catch (err) {
-    console.error("❌ Upload error:", err);
-    res.status(500).json({ error: err.message || "Erro ao fazer upload" });
-  }
-});
-
 export default router;

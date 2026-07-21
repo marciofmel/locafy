@@ -23,10 +23,10 @@ export default function Plans() {
     fetch(`${API}/plans`).then(r => r.json()).then(setDbPlans).catch(() => setErr("Erro ao carregar planos"));
   }, []);
 
-  function subscribe(planId) {
+  async function subscribe(planId) {
+    if (!user) return navigate("/login");
     if (!planId) return setErr("Plano indisponível");
-    if (user) return navigate(`/payment/card/${planId}`);
-    navigate(`/cadastro?plan=${planId}`);
+    navigate(`/payment/card/${planId}`);
   }
 
   return (
@@ -56,7 +56,7 @@ export default function Plans() {
               ))}
             </ul>
             <button onClick={() => subscribe(dbPlans.find(p => p.name === plan.name)?.id)} disabled={loading !== null} className={`w-full mt-8 ${plan.btn} text-white py-3 rounded-lg font-semibold hover:opacity-90 transition disabled:opacity-50`}>
-              {loading === dbPlans.find(p => p.name === plan.name)?.id ? "Processando..." : "Assinar agora"}
+              {loading === dbPlans.find(p => p.name === plan.name)?.id ? "Processando..." : (user ? "Assinar agora" : "Cadastre-se grátis")}
             </button>
           </div>
         ))}
