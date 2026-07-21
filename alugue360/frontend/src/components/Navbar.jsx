@@ -1,11 +1,24 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { Menu, X, Home, Car, TreePine, PartyPopper, LayoutDashboard, LogIn, UserPlus, Heart } from "lucide-react";
-import { useState } from "react";
+import { Menu, X, Home, Car, TreePine, PartyPopper, LogIn, UserPlus, Heart, Settings, CreditCard, LogOut } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
 
 export default function Navbar() {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const profileRef = useRef(null);
+
+  useEffect(() => {
+    function handleClick(e) {
+      if (profileRef.current && !profileRef.current.contains(e.target)) {
+        setProfileOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
 
   const categories = [
     { name: "Casas", slug: "casas", icon: Home },
@@ -29,16 +42,43 @@ export default function Navbar() {
                 <cat.icon size={18} /> {cat.name}
               </Link>
             ))}
-            <Link to="/planos" className="hover:text-emerald-200 transition">Planos</Link>
             {user ? (
               <>
                 <Link to="/favoritos" className="flex items-center gap-1 hover:text-emerald-200 transition">
                   <Heart size={18} /> Favoritos
                 </Link>
                 <Link to="/dashboard" className="flex items-center gap-1 hover:text-emerald-200 transition">
-                  <LayoutDashboard size={18} /> Painel
+                  <Home size={18} /> Painel
                 </Link>
-                <button onClick={logout} className="bg-red-500 px-3 py-1 rounded hover:bg-red-600 transition text-sm">Sair</button>
+                <div className="relative" ref={profileRef}>
+                  <button onClick={() => setProfileOpen(!profileOpen)} className="flex items-center gap-2 focus:outline-none">
+                    {user.avatar ? (
+                      <img src={user.avatar} className="w-9 h-9 rounded-full object-cover border-2 border-white hover:opacity-90 transition" />
+                    ) : (
+                      <div className="w-9 h-9 rounded-full bg-emerald-400 flex items-center justify-center text-sm font-bold hover:opacity-90 transition">
+                        {user.name?.[0]?.toUpperCase()}
+                      </div>
+                    )}
+                  </button>
+                  {profileOpen && (
+                    <div className="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-lg py-2 z-50">
+                      <div className="px-4 py-2 border-b border-gray-100">
+                        <p className="text-sm font-semibold text-gray-800 truncate">{user.name}</p>
+                        <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                      </div>
+                      <button onClick={() => { setProfileOpen(false); navigate("/planos"); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition">
+                        <CreditCard size={16} className="text-gray-400" /> Planos
+                      </button>
+                      <button onClick={() => { setProfileOpen(false); navigate("/perfil"); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition">
+                        <Settings size={16} className="text-gray-400" /> Editar perfil
+                      </button>
+                      <div className="border-t border-gray-100 my-1" />
+                      <button onClick={() => { setProfileOpen(false); logout(); navigate("/"); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition">
+                        <LogOut size={16} /> Sair
+                      </button>
+                    </div>
+                  )}
+                </div>
               </>
             ) : (
               <>
@@ -61,11 +101,22 @@ export default function Navbar() {
               <cat.icon size={20} /> {cat.name}
             </Link>
           ))}
-          <Link to="/planos" onClick={() => setOpen(false)} className="block py-2 hover:bg-emerald-600 rounded px-2">Planos</Link>
           {user ? (
             <>
+              <div className="flex items-center gap-3 py-2 px-2 border-b border-emerald-600">
+                {user.avatar ? (
+                  <img src={user.avatar} className="w-10 h-10 rounded-full object-cover border-2 border-white" />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-emerald-400 flex items-center justify-center text-lg font-bold">{user.name?.[0]?.toUpperCase()}</div>
+                )}
+                <div>
+                  <p className="font-medium text-sm">{user.name}</p>
+                  <p className="text-xs text-emerald-200 truncate">{user.email}</p>
+                </div>
+              </div>
               <Link to="/favoritos" onClick={() => setOpen(false)} className="block py-2 hover:bg-emerald-600 rounded px-2">Favoritos</Link>
               <Link to="/dashboard" onClick={() => setOpen(false)} className="block py-2 hover:bg-emerald-600 rounded px-2">Painel</Link>
+              <Link to="/planos" onClick={() => setOpen(false)} className="block py-2 hover:bg-emerald-600 rounded px-2">Planos</Link>
               <button onClick={() => { logout(); setOpen(false); }} className="w-full text-left py-2 text-red-300">Sair</button>
             </>
           ) : (
