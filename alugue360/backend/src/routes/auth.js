@@ -73,4 +73,26 @@ router.post("/documents", authMiddleware, async (req, res) => {
   }
 });
 
+router.put("/profile", authMiddleware, async (req, res) => {
+  try {
+    const { name, phone, cpf, city, state, street, number, neighborhood, avatar } = req.body;
+    const data = {};
+    if (name !== undefined) data.name = name;
+    if (phone !== undefined) data.phone = phone;
+    if (cpf !== undefined) data.cpf = cpf;
+    if (city !== undefined) data.city = city;
+    if (state !== undefined) data.state = state;
+    if (street !== undefined) data.street = street;
+    if (number !== undefined) data.number = number;
+    if (neighborhood !== undefined) data.neighborhood = neighborhood;
+    if (avatar !== undefined) data.avatar = avatar;
+
+    const user = await prisma.user.update({ where: { id: req.userId }, data });
+    const { password, ...safe } = user;
+    res.json(safe);
+  } catch {
+    res.status(500).json({ error: "Erro ao atualizar perfil" });
+  }
+});
+
 export default router;
