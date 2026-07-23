@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { MapPin } from "lucide-react";
+import { MapPin, Star } from "lucide-react";
 
 import { API, imgUrl } from "../config";
 
@@ -31,7 +31,7 @@ export default function Listings() {
     const matchCat = !filterCat || filterCat === "todos" || item.category?.slug === filterCat;
     const matchSearch = !searchTerm || item.title.toLowerCase().includes(searchTerm) || item.description?.toLowerCase().includes(searchTerm);
     return matchCat && matchSearch;
-  });
+  }).sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0));
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
@@ -49,9 +49,10 @@ export default function Listings() {
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filtered.map(item => (
-            <Link key={item.id} to={`/anuncio/${item.id}`} className="bg-white rounded-xl shadow overflow-hidden hover:shadow-lg transition">
-              <div className="h-48 bg-gray-100 flex items-center justify-center text-gray-400 text-4xl">
+            <Link key={item.id} to={`/anuncio/${item.id}`} className={`bg-white rounded-xl shadow overflow-hidden hover:shadow-lg transition ${item.featured ? "ring-2 ring-yellow-400" : ""}`}>
+              <div className="h-48 bg-gray-100 flex items-center justify-center text-gray-400 text-4xl relative">
                 {item.images?.[0] ? <img src={imgUrl(item.images[0])} onError={e => { e.target.style.display = "none"; e.target.parentElement.textContent = "📷"; }} className="w-full h-full object-cover" /> : "📷"}
+                {item.featured && <span className="absolute top-2 left-2 bg-yellow-400 text-yellow-900 text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1"><Star size={12} /> Destaque</span>}
               </div>
               <div className="p-4">
                 <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded">{item.category?.name}</span>

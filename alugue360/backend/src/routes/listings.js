@@ -75,9 +75,10 @@ router.post("/", authMiddleware, async (req, res) => {
       });
     }
 
+    const featured = sub.plan.price >= 49.99;
     const { title, description, price, priceType, images, videos, whatsapp, street, number, neighborhood, city, state, categoryId, features } = req.body;
     const listing = await prisma.listing.create({
-      data: { title, description, price, priceType: priceType || "daily", images, videos: videos || [], whatsapp, street, number, neighborhood, city, state, categoryId, features: features || [], userId: req.userId },
+      data: { title, description, price, priceType: priceType || "daily", images, videos: videos || [], whatsapp, street, number, neighborhood, city, state, categoryId, features: features || [], userId: req.userId, featured },
     });
 
     await prisma.subscription.update({

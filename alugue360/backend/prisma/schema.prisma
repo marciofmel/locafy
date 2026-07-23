@@ -58,6 +58,7 @@ model Listing {
   city        String?
   state       String?
   active      Boolean  @default(true)
+  featured    Boolean  @default(false)
   features    String[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

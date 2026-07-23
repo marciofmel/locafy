@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { MessageCircle, MapPin, ArrowLeft, Check, Heart, Camera, X, Loader, Info } from "lucide-react";
+import { MessageCircle, MapPin, ArrowLeft, Check, Heart, Camera, X, Loader, Info, Star } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { API, imgUrl } from "../config";
 
@@ -127,7 +127,10 @@ export default function ListingDetail() {
 
         <div>
           <div className="flex items-center justify-between">
-            <span className="text-sm bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full">{item.category?.name}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full">{item.category?.name}</span>
+              {item.featured && <span className="text-xs bg-yellow-400 text-yellow-900 px-2 py-1 rounded-full flex items-center gap-1 font-medium"><Star size={12} /> Destaque</span>}
+            </div>
             {user && (
               <button onClick={toggleFavorite} className="flex items-center gap-1 text-sm hover:text-red-500 transition">
                 <Heart size={20} className={favorited ? "text-red-500 fill-red-500" : "text-gray-400"} />
