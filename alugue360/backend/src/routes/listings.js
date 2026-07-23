@@ -11,7 +11,11 @@ router.get("/", async (req, res) => {
   const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 12));
   const where = { active: true };
 
-  if (category) where.categoryId = category;
+  if (category) {
+    const cat = await prisma.category.findUnique({ where: { slug: category } });
+    if (cat) where.categoryId = cat.id;
+    else return res.json({ listings: [], total: 0, page, limit, hasMore: false });
+  }
   if (city) where.city = { contains: city, mode: "insensitive" };
   if (state) where.state = state;
   if (search) {
