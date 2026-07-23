@@ -87,10 +87,9 @@ router.post("/", authMiddleware, async (req, res) => {
       });
     }
 
-    const featured = sub.plan.price >= 49.99;
     const { title, description, price, priceType, images, videos, whatsapp, street, number, neighborhood, city, state, categoryId, features } = req.body;
     const listing = await prisma.listing.create({
-      data: { title, description, price, priceType: priceType || "daily", images, videos: videos || [], whatsapp, street, number, neighborhood, city, state, categoryId, features: features || [], userId: req.userId, featured },
+      data: { title, description, price, priceType: priceType || "daily", images, videos: videos || [], whatsapp, street, number, neighborhood, city, state, categoryId, features: features || [], userId: req.userId, featured: false },
     });
 
     await prisma.subscription.update({
@@ -170,6 +169,32 @@ router.put("/:id", authMiddleware, async (req, res) => {
       categoryId,
       features: features ?? listing.features,
     },
+  });
+  res.json(updated);
+});
+
+router.get("/featured", async (req, res) => {
+  const listings = await prisma.listing.findMany({
+    where: { active: true, featured: true },
+    include: { category: true },
+    orderBy: { createdAt: "desc" },
+  });
+  res.json(listings);
+});
+
+router.put("/:id/destacar", authMiddleware, async (req, res) => {
+  const listing = await prisma.listing.findUnique({ where: { id: req.params.id } });
+  if (!listing || listing.userId !== req.userId) return res.status(403).json({ error: "Sem permissão" });
+
+  const sub = await prisma.subscription.findFirst({
+    where: { userId: req.userId, status: "active" },
+    include: { plan: true },
+  });
+  if (!sub || sub.plan.price < 49.99) return res.status(403).json({ error: "Seu plano não permite destaque" });
+
+  const updated = await prisma.listing.update({
+    where: { id: req.params.id },
+    data: { featured: !listing.featured },
   });
   res.json(updated);
 });

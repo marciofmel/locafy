@@ -40,6 +40,8 @@ export default function Dashboard() {
     } catch {}
   }
 
+  const canFeature = subInfo?.plan?.price >= 49.99;
+
   async function deleteListing(id) {
     if (!confirm("Tem certeza?")) return;
     await fetch(`${API}/listings/${id}`, {
@@ -48,6 +50,14 @@ export default function Dashboard() {
     });
     fetchListings();
     fetchUserInfo();
+  }
+
+  async function toggleFeature(id) {
+    await fetch(`${API}/listings/${id}/destacar`, {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    fetchListings();
   }
 
   const planLimit = subInfo ? subInfo.plan.maxListings + subInfo.extraListings : 0;
@@ -106,7 +116,12 @@ export default function Dashboard() {
                 <h3 className="font-semibold text-gray-800 truncate">{item.title}</h3>
                 <p className="text-sm text-gray-500">{item.category?.name} • R$ {item.price.toFixed(2)}/{item.priceType === "daily" ? "dia" : "mês"}</p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
+                {canFeature && (
+                  <button onClick={() => toggleFeature(item.id)} className={`text-xs px-3 py-1.5 rounded-lg font-medium transition ${item.featured ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-200" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
+                    {item.featured ? "Destacado" : "Destacar"}
+                  </button>
+                )}
                 <Link to={`/editar/${item.id}`} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"><Edit size={20} /></Link>
                 <button onClick={() => deleteListing(item.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg"><Trash2 size={20} /></button>
               </div>

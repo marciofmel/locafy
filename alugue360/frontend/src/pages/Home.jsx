@@ -42,8 +42,8 @@ export default function Home() {
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    fetch(`${API}/listings`).then(r => r.json()).then(data => {
-      setFeatured((data.listings || data).slice(0, 6));
+    fetch(`${API}/listings/featured`).then(r => r.json()).then(data => {
+      setFeatured(data.slice(0, 6));
     }).catch(() => {});
   }, []);
 
