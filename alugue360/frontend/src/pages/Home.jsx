@@ -76,7 +76,7 @@ export default function Home() {
       <section className="max-w-7xl mx-auto px-4 py-8 md:py-12">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl md:text-2xl font-bold text-gray-800">Categorias</h2>
-          <Link to="/categoria/todos" className="text-sm text-emerald-600 hover:underline flex items-center gap-1">
+          <Link to="/categorias" className="text-sm text-emerald-600 hover:underline flex items-center gap-1">
             Ver todas <ChevronRight size={16} />
           </Link>
         </div>
@@ -118,7 +118,7 @@ export default function Home() {
         <section className="max-w-7xl mx-auto px-4 py-8 md:py-12">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl md:text-2xl font-bold text-gray-800">Destaques</h2>
-            <Link to="/categoria/todos" className="text-sm text-emerald-600 hover:underline flex items-center gap-1">
+            <Link to="/categorias" className="text-sm text-emerald-600 hover:underline flex items-center gap-1">
               Ver todos <ChevronRight size={16} />
             </Link>
           </div>

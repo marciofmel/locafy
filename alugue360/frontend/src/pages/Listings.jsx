@@ -19,7 +19,7 @@ export default function Listings() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [filterCat, setFilterCat] = useState(slug || "");
+  const [filterCat, setFilterCat] = useState(slug && slug !== "todos" ? slug : "");
   const sentinelRef = useRef(null);
 
   const searchTerm = searchParams.get("search")?.toLowerCase() || "";
