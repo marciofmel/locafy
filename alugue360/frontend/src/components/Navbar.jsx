@@ -67,7 +67,7 @@ export default function Navbar() {
                         <p className="text-xs text-gray-500 truncate">{user.email}</p>
                       </div>
                       <button onClick={() => { setProfileOpen(false); navigate("/planos"); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition">
-                        <CreditCard size={16} className="text-gray-400" /> Planos
+                        <CreditCard size={16} className="text-gray-400" /> Upgrad
                       </button>
                       <button onClick={() => { setProfileOpen(false); navigate("/perfil"); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition">
                         <Settings size={16} className="text-gray-400" /> Editar perfil
@@ -116,7 +116,7 @@ export default function Navbar() {
               </div>
               <Link to="/favoritos" onClick={() => setOpen(false)} className="block py-2 hover:bg-emerald-600 rounded px-2">Favoritos</Link>
               <Link to="/dashboard" onClick={() => setOpen(false)} className="block py-2 hover:bg-emerald-600 rounded px-2">Painel</Link>
-              <Link to="/planos" onClick={() => setOpen(false)} className="block py-2 hover:bg-emerald-600 rounded px-2">Planos</Link>
+              <Link to="/planos" onClick={() => setOpen(false)} className="block py-2 hover:bg-emerald-600 rounded px-2">Upgrad</Link>
               <button onClick={() => { logout(); setOpen(false); }} className="w-full text-left py-2 text-red-300">Sair</button>
             </>
           ) : (
