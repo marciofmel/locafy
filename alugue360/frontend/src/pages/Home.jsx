@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { Home as HomeIcon, Car, TreePine, PartyPopper, Search, ChevronRight } from "lucide-react";
+import { Home as HomeIcon, Car, TreePine, PartyPopper, Search, ChevronRight, Star, MapPin } from "lucide-react";
 
 import { API, imgUrl } from "../config";
 
@@ -39,11 +39,15 @@ const categoryConfig = [
 
 export default function Home() {
   const [featured, setFeatured] = useState([]);
+  const [recent, setRecent] = useState([]);
   const [search, setSearch] = useState("");
 
   useEffect(() => {
     fetch(`${API}/listings/featured`).then(r => r.json()).then(data => {
       setFeatured(data.slice(0, 6));
+    }).catch(() => {});
+    fetch(`${API}/listings?limit=12`).then(r => r.json()).then(data => {
+      if (data.listings) setRecent(data.listings);
     }).catch(() => {});
   }, []);
 
@@ -122,31 +126,50 @@ export default function Home() {
               Ver todos <ChevronRight size={16} />
             </Link>
           </div>
-
-          {/* Móvel: slider horizontal. Desktop: grid */}
           <div className="flex md:grid md:grid-cols-3 gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-2 -mx-4 px-4 md:mx-0 md:px-0 md:overflow-visible">
             {featured.map(item => (
-              <Link
-                key={item.id}
-                to={`/anuncio/${item.id}`}
-                className="group flex-shrink-0 w-64 md:w-auto snap-start bg-white rounded-xl shadow overflow-hidden hover:shadow-lg transition"
-              >
-                <div className="h-40 md:h-48 bg-gray-200">
+              <Link key={item.id} to={`/anuncio/${item.id}`} className="group flex-shrink-0 w-64 md:w-auto snap-start bg-white rounded-xl shadow overflow-hidden hover:shadow-lg transition">
+                <div className="h-40 md:h-48 bg-gray-200 relative">
                   {item.images?.[0] ? (
                     <img src={imgUrl(item.images[0])} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">📷 Sem foto</div>
                   )}
+                  <span className="absolute top-2 left-2 bg-yellow-400 text-yellow-900 text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1"><Star size={12} /> Destaque</span>
                 </div>
                 <div className="p-3 md:p-4">
                   <span className="text-[10px] md:text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 md:py-1 rounded">{item.category?.name}</span>
                   <h3 className="font-semibold mt-1.5 text-sm md:text-base text-gray-800 truncate">{item.title}</h3>
-                  <p className="text-emerald-600 font-bold text-sm md:text-base mt-1">
-                    R$ {item.price.toFixed(2)} <span className="text-[10px] md:text-xs font-normal text-gray-500">/{item.priceType === "daily" ? "dia" : "mês"}</span>
-                  </p>
-                  {item.city && (
-                    <p className="text-[11px] md:text-sm text-gray-500 mt-0.5 truncate">{item.city}{item.state ? ` - ${item.state}` : ""}</p>
-                  )}
+                  <p className="text-emerald-600 font-bold text-sm md:text-base mt-1">R$ {item.price.toFixed(2)} <span className="text-[10px] md:text-xs font-normal text-gray-500">/{item.priceType === "daily" ? "dia" : "mês"}</span></p>
+                  {item.city && <p className="text-[11px] md:text-sm text-gray-500 mt-0.5 truncate">{item.city}{item.state ? ` - ${item.state}` : ""}</p>}
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Anúncios Recentes */}
+      {recent.length > 0 && (
+        <section className="max-w-7xl mx-auto px-4 py-8 md:py-12">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl md:text-2xl font-bold text-gray-800">Anúncios Recentes</h2>
+            <Link to="/categoria/todos" className="text-sm text-emerald-600 hover:underline flex items-center gap-1">
+              Ver todos <ChevronRight size={16} />
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6">
+            {recent.map(item => (
+              <Link key={item.id} to={`/anuncio/${item.id}`} className={`bg-white rounded-xl shadow overflow-hidden hover:shadow-lg transition ${item.featured ? "ring-2 ring-yellow-400" : ""}`}>
+                <div className="h-28 sm:h-36 md:h-44 bg-gray-100 flex items-center justify-center text-gray-400 text-4xl relative">
+                  {item.images?.[0] ? <img src={imgUrl(item.images[0])} onError={e => { e.target.style.display = "none"; e.target.parentElement.textContent = "📷"; }} className="w-full h-full object-cover" /> : "📷"}
+                  {item.featured && <span className="absolute top-1 left-1 bg-yellow-400 text-yellow-900 text-[10px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5"><Star size={10} /> Destaque</span>}
+                </div>
+                <div className="p-2 md:p-4">
+                  <span className="text-[10px] md:text-xs bg-emerald-100 text-emerald-700 px-1.5 py-0.5 md:px-2 md:py-1 rounded">{item.category?.name}</span>
+                  <h3 className="font-semibold mt-1 md:mt-2 text-xs md:text-base text-gray-800 truncate">{item.title}</h3>
+                  <p className="text-emerald-600 font-bold text-xs md:text-base mt-0.5 md:mt-1">R$ {item.price.toFixed(2)} /{item.priceType === "daily" ? "dia" : "mês"}</p>
+                  {(item.city || item.state) && <p className="text-[10px] md:text-sm text-gray-500 mt-0.5 md:mt-1 flex items-center gap-1 truncate"><MapPin size={12} />{item.city}{item.state ? ` - ${item.state}` : ""}</p>}
                 </div>
               </Link>
             ))}
