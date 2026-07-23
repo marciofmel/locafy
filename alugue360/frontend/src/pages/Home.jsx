@@ -43,7 +43,7 @@ export default function Home() {
 
   useEffect(() => {
     fetch(`${API}/listings`).then(r => r.json()).then(data => {
-      setFeatured(data.slice(0, 6));
+      setFeatured((data.listings || data).slice(0, 6));
     }).catch(() => {});
   }, []);
 

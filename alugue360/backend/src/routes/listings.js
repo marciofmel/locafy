@@ -7,6 +7,8 @@ const router = Router();
 
 router.get("/", async (req, res) => {
   const { category, search, city, state } = req.query;
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 12));
   const where = { active: true };
 
   if (category) where.categoryId = category;
@@ -19,12 +21,18 @@ router.get("/", async (req, res) => {
     ];
   }
 
-  const listings = await prisma.listing.findMany({
-    where,
-    include: { category: true, user: { select: { id: true, name: true, phone: true } } },
-    orderBy: { createdAt: "desc" },
-  });
-  res.json(listings);
+  const [listings, total] = await Promise.all([
+    prisma.listing.findMany({
+      where,
+      include: { category: true, user: { select: { id: true, name: true, phone: true } } },
+      orderBy: [{ featured: "desc" }, { createdAt: "desc" }],
+      skip: (page - 1) * limit,
+      take: limit,
+    }),
+    prisma.listing.count({ where }),
+  ]);
+
+  res.json({ listings, total, page, limit, hasMore: page * limit < total });
 });
 
 router.get("/:id", async (req, res) => {

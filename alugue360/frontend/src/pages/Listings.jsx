@@ -1,37 +1,64 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { MapPin, Star } from "lucide-react";
 
 import { API, imgUrl } from "../config";
 
+const categories = [
+  { slug: "casas", name: "Casas" },
+  { slug: "carros", name: "Carros" },
+  { slug: "motos", name: "Motos" },
+  { slug: "ranchos", name: "Ranchos" },
+  { slug: "saloes", name: "Salões" },
+];
+
 export default function Listings() {
   const { slug } = useParams();
   const [searchParams] = useSearchParams();
   const [listings, setListings] = useState([]);
-  const [categories, setCategories] = useState([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [filterCat, setFilterCat] = useState(slug || "");
-
-  useEffect(() => {
-    fetch(`${API}/listings`).then(r => r.json()).then(data => {
-      setListings(data);
-    });
-    fetch(`${API}/listings?limit=0`).then(() => {
-      setCategories([
-        { slug: "casas", name: "Casas" },
-        { slug: "carros", name: "Carros" },
-        { slug: "motos", name: "Motos" },
-        { slug: "ranchos", name: "Ranchos" },
-        { slug: "saloes", name: "Salões" },
-      ]);
-    });
-  }, []);
+  const sentinelRef = useRef(null);
 
   const searchTerm = searchParams.get("search")?.toLowerCase() || "";
-  const filtered = listings.filter(item => {
-    const matchCat = !filterCat || filterCat === "todos" || item.category?.slug === filterCat;
-    const matchSearch = !searchTerm || item.title.toLowerCase().includes(searchTerm) || item.description?.toLowerCase().includes(searchTerm);
-    return matchCat && matchSearch;
-  }).sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0));
+
+  const fetchListings = useCallback(async (pageNum, append) => {
+    setLoading(true);
+    const params = new URLSearchParams({ page: pageNum, limit: "12" });
+    if (filterCat) params.set("category", filterCat);
+    if (searchTerm) params.set("search", searchTerm);
+    const res = await fetch(`${API}/listings?${params}`);
+    const data = await res.json();
+    if (append) {
+      setListings(prev => [...prev, ...data.listings]);
+    } else {
+      setListings(data.listings);
+    }
+    setHasMore(data.hasMore);
+    setLoading(false);
+  }, [filterCat, searchTerm]);
+
+  useEffect(() => {
+    setPage(1);
+    setListings([]);
+    setHasMore(true);
+    fetchListings(1, false);
+  }, [fetchListings]);
+
+  useEffect(() => {
+    if (!hasMore || loading) return;
+    const observer = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting) {
+        const nextPage = page + 1;
+        setPage(nextPage);
+        fetchListings(nextPage, true);
+      }
+    }, { rootMargin: "200px" });
+    if (sentinelRef.current) observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [hasMore, loading, page, fetchListings]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
@@ -44,27 +71,31 @@ export default function Listings() {
         ))}
       </div>
 
-      {filtered.length === 0 ? (
+      {listings.length === 0 && !loading ? (
         <p className="text-center text-gray-500 py-12">Nenhum anúncio encontrado</p>
       ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filtered.map(item => (
-            <Link key={item.id} to={`/anuncio/${item.id}`} className={`bg-white rounded-xl shadow overflow-hidden hover:shadow-lg transition ${item.featured ? "ring-2 ring-yellow-400" : ""}`}>
-              <div className="h-48 bg-gray-100 flex items-center justify-center text-gray-400 text-4xl relative">
-                {item.images?.[0] ? <img src={imgUrl(item.images[0])} onError={e => { e.target.style.display = "none"; e.target.parentElement.textContent = "📷"; }} className="w-full h-full object-cover" /> : "📷"}
-                {item.featured && <span className="absolute top-2 left-2 bg-yellow-400 text-yellow-900 text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1"><Star size={12} /> Destaque</span>}
-              </div>
-              <div className="p-4">
-                <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded">{item.category?.name}</span>
-                <h3 className="font-semibold mt-2 text-gray-800">{item.title}</h3>
-                <p className="text-emerald-600 font-bold mt-1">R$ {item.price.toFixed(2)} /{item.priceType === "daily" ? "dia" : "mês"}</p>
-                {(item.city || item.state) && (
-                  <p className="text-sm text-gray-500 mt-1 flex items-center gap-1"><MapPin size={14} />{item.city}{item.state ? ` - ${item.state}` : ""}</p>
-                )}
-              </div>
-            </Link>
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3 md:gap-6">
+            {listings.map(item => (
+              <Link key={item.id} to={`/anuncio/${item.id}`} className={`bg-white rounded-xl shadow overflow-hidden hover:shadow-lg transition ${item.featured ? "ring-2 ring-yellow-400" : ""}`}>
+                <div className="h-28 sm:h-36 md:h-44 bg-gray-100 flex items-center justify-center text-gray-400 text-4xl relative">
+                  {item.images?.[0] ? <img src={imgUrl(item.images[0])} onError={e => { e.target.style.display = "none"; e.target.parentElement.textContent = "📷"; }} className="w-full h-full object-cover" /> : "📷"}
+                  {item.featured && <span className="absolute top-1 left-1 bg-yellow-400 text-yellow-900 text-[10px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5"><Star size={10} /> Destaque</span>}
+                </div>
+                <div className="p-2 md:p-4">
+                  <span className="text-[10px] md:text-xs bg-emerald-100 text-emerald-700 px-1.5 py-0.5 md:px-2 md:py-1 rounded">{item.category?.name}</span>
+                  <h3 className="font-semibold mt-1 md:mt-2 text-xs md:text-base text-gray-800 truncate">{item.title}</h3>
+                  <p className="text-emerald-600 font-bold text-xs md:text-base mt-0.5 md:mt-1">R$ {item.price.toFixed(2)} /{item.priceType === "daily" ? "dia" : "mês"}</p>
+                  {(item.city || item.state) && (
+                    <p className="text-[10px] md:text-sm text-gray-500 mt-0.5 md:mt-1 flex items-center gap-1 truncate"><MapPin size={12} />{item.city}{item.state ? ` - ${item.state}` : ""}</p>
+                  )}
+                </div>
+              </Link>
+            ))}
+          </div>
+          <div ref={sentinelRef} className="h-4" />
+          {loading && <p className="text-center text-gray-400 py-4">Carregando...</p>}
+        </>
       )}
     </div>
   );

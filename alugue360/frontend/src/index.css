@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
-/* Esconde scrollbar nos sliders (Chrome/Safari/Firefox) */
+html::-webkit-scrollbar { display: none; }
+html { -ms-overflow-style: none; scrollbar-width: none; }
+
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
